@@ -10,8 +10,8 @@ git clone https://github.com/AniyekDas/helix_bridge_poc
 cd helix_bridge_poc
 ```
 
-## Add the folders of Files, Pages, Modules, Settings Folder Downloaded from V1 Site through Export Functionalty, in the above repository folder in local.
-# Every File inside each category folder should be in the json format.
+### Add the folders of Files, Pages, Modules, Settings Folder Downloaded from V1 Site through Export Functionalty, in the above repository folder in local.
+Every File inside each category folder should be in the json format.
  
 
 ## 🐍 Create and Activate a Virtual Environment
