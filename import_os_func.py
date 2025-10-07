@@ -1,0 +1,443 @@
+import os
+import json
+from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
+import time
+
+def process_pages(page, sitename, instance_id, files_folder, pages_folder):
+    page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-pages--main")
+    page.wait_for_timeout(5000)
+
+    for page_name in os.listdir(pages_folder):
+        if page_name.endswith(".json"):
+            page_path = os.path.join(blocks_folder, page_name)
+            with open(page_path, "r", encoding="utf-8") as f:
+                page_data = json.load(f)
+                try:
+                    p_css = page_data.get("storage", {}).get("data", {}).get("css", "")
+                    p_html = page_data.get("storage", {}).get("data", {}).get("html", "")
+                    p_title = page_data.get("settings", {}).get("title", "")
+                    p_description = page_data.get("settings", {}).get("category", "")
+                    p_language = page_data.get("settings", {}).get("protected", "")
+                    p_hidden = page_data.get("settings", {}).get("hidden", False)
+                    
+                    print(f"found block : {page_name}")
+
+                    # click on add page
+                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/button').click()
+                    page.wait_for_timeout(1000)
+
+                    # Fill title
+                    b_title_field = page.locator('x//*[@id="page-title"]')
+                    b_title_field.click()
+                    page.keyboard.press("Control+A")
+                    b_title_field.fill(p_title)
+                    page.wait_for_timeout(1000)
+
+                    # Fill category
+                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]').click()
+                    b_category_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]/input')
+                    b_category_field.fill(b_category)
+                    page.keyboard.press("Enter")
+                    page.wait_for_timeout(1000)
+
+                    # If protected, perform extended logic
+                    if b_protected:
+                        # Click protected checkbox
+                        page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div/label/input').click()
+                        page.wait_for_timeout(1000)
+
+                        # Step 1: Handle b_files
+                        if isinstance(b_files, list) and b_files:
+                            for file_value in b_files:
+                                page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]').click()
+                                file_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]/input')
+                                file_input.fill(file_value)
+                                page.keyboard.press("Enter")
+                                page.wait_for_timeout(1000)
+
+                        # Step 2: Handle auto_attach
+                        if b_auto_attach:
+                            page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[2]/label/input').click()
+                            page.wait_for_timeout(1000)
+
+                            # Step 2a: Handle auto_attach_location
+                            if b_auto_attach_location:
+                                location_select = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[3]/select')
+                                options = location_select.locator('option').all()
+                                for option in options:
+                                    option_text = option.text_content()
+                                    if option_text.strip() == b_auto_attach_location.strip():
+                                        option.click()
+                                        page.wait_for_timeout(1000)
+                                        break
+
+                            # Step 3: Handle auto_attach_exceptions
+                            if isinstance(b_auto_attach_exceptions, list) and b_auto_attach_exceptions:
+                                exception_container = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]')
+                                page.wait_for_timeout(1000)
+                                for exception in b_auto_attach_exceptions:
+                                    exception_container.click()
+                                    exception_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]/input')
+                                    exception_input.fill(exception)
+                                    page.keyboard.press("Enter")
+                                    page.wait_for_timeout(1000)
+
+                        # Step 4: Handle auto_attach_to_error_pages
+                        if b_auto_attach_to_error_pages:
+                            page.locator('xpath=b_auto_attach_to_error_pages').click()
+                            page.wait_for_timeout(1000)
+
+                    # Proceed with block import
+                    
+                    import_btn = page.locator('.fa-download')
+                    import_btn.click()
+                    page.wait_for_timeout(3000)
+                    text_field = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[6]/div[1]/div/div/div/div[5]/div/pre')
+                    text_field.click()
+                    page.wait_for_timeout(2000)
+                    text_fill = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[1]/textarea')
+                    text_fill.fill(b_html + "\n" + "<style>\n" + b_css + "\n</style>")
+                    page.wait_for_timeout(2000)
+                    page.locator('.gjs-btn-import').click() # save code button (import)
+                    page.wait_for_timeout(2000)
+                    page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # save button
+                    page.wait_for_timeout(2000)
+                    page.locator('.btn-back-tiered-menu ').click() # back button press
+                    page.wait_for_timeout(2000)
+
+                except KeyError:
+                    print(f"Certain Field Not Found : '{block_name}'")
+
+def process_blocks(page, sitename, instance_id, blocks_folder):
+    page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-settings--elements")
+    page.wait_for_timeout(5000)
+
+    for block_name in os.listdir(blocks_folder):
+        if block_name.endswith(".json"):
+            block_path = os.path.join(blocks_folder, block_name)
+            with open(block_path, "r", encoding="utf-8") as f:
+                block_data = json.load(f)
+                try:
+                    b_css = block_data.get("storage", {}).get("data", {}).get("css", "")
+                    b_html = block_data.get("storage", {}).get("data", {}).get("html", "")
+                    b_title = block_data.get("settings", {}).get("title", "")
+                    b_description = block_data.get("settings", {}).get("settings", {}).get("description", "")
+                    b_category = block_data.get("settings", {}).get("category", "")
+                    b_protected = block_data.get("settings", {}).get("protected", "")
+                    b_files = block_data.get("settings", {}).get("files", [])
+                    b_auto_attach = block_data.get("settings", {}).get("settings", {}).get("auto_attach", False)
+                    b_auto_attach_location = block_data.get("settings", {}).get("settings", {}).get("auto_attach_location", "")
+                    b_auto_attach_exceptions = block_data.get("settings", {}).get("settings", {}).get("auto_attach_exceptions", [])
+                    b_auto_attach_to_error_pages = block_data.get("settings", {}).get("settings", {}).get("auto_attach_to_error_pages", False)
+
+                    # if isinstance(b_files, list) and b_files:
+                    #     block_title_map[block_name.replace(".json", "")] = b_title
+
+                    print(f"found block : {block_name}")
+
+                    # click on add block
+                    page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a').click()
+                    page.wait_for_timeout(1000)
+
+                    # Fill title
+                    b_title_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[1]/input')
+                    b_title_field.click()
+                    page.keyboard.press("Control+A")
+                    b_title_field.fill(b_title)
+                    page.wait_for_timeout(1000)
+
+                    # Fill Description
+                    b_description_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[2]/input')
+                    b_description_field.click()
+                    page.keyboard.press("Control+A")
+                    b_description_field.fill(b_description)
+                    page.wait_for_timeout(1000)
+
+                    # Fill category
+                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]').click()
+                    b_category_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]/input')
+                    b_category_field.fill(b_category)
+                    page.keyboard.press("Enter")
+                    page.wait_for_timeout(1000)
+
+                    # If protected, perform extended logic
+                    if b_protected:
+                        # Click protected checkbox
+                        page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div/label/input').click()
+                        page.wait_for_timeout(1000)
+
+                        # Step 1: Handle b_files
+                        if isinstance(b_files, list) and b_files:
+                            for file_value in b_files:
+                                page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]').click()
+                                file_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]/input')
+                                file_input.fill(file_value)
+                                page.keyboard.press("Enter")
+                                page.wait_for_timeout(1000)
+
+                        # Step 2: Handle auto_attach
+                        if b_auto_attach:
+                            page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[2]/label/input').click()
+                            page.wait_for_timeout(1000)
+
+                            # Step 2a: Handle auto_attach_location
+                            if b_auto_attach_location:
+                                location_select = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[3]/select')
+                                options = location_select.locator('option').all()
+                                for option in options:
+                                    option_text = option.text_content()
+                                    if option_text.strip() == b_auto_attach_location.strip():
+                                        option.click()
+                                        page.wait_for_timeout(1000)
+                                        break
+
+                            # Step 3: Handle auto_attach_exceptions
+                            if isinstance(b_auto_attach_exceptions, list) and b_auto_attach_exceptions:
+                                exception_container = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]')
+                                page.wait_for_timeout(1000)
+                                for exception in b_auto_attach_exceptions:
+                                    exception_container.click()
+                                    exception_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]/input')
+                                    exception_input.fill(exception)
+                                    page.keyboard.press("Enter")
+                                    page.wait_for_timeout(1000)
+
+                        # Step 4: Handle auto_attach_to_error_pages
+                        if b_auto_attach_to_error_pages:
+                            page.locator('xpath=b_auto_attach_to_error_pages').click()
+                            page.wait_for_timeout(1000)
+
+                    # Proceed with block import
+                    
+                    import_btn = page.locator('.fa-download')
+                    import_btn.click()
+                    page.wait_for_timeout(3000)
+                    text_field = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[6]/div[1]/div/div/div/div[5]/div/pre')
+                    text_field.click()
+                    page.wait_for_timeout(2000)
+                    text_fill = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[1]/textarea')
+                    text_fill.fill(b_html + "\n" + "<style>\n" + b_css + "\n</style>")
+                    page.wait_for_timeout(2000)
+                    page.locator('.gjs-btn-import').click() # save code button (import)
+                    page.wait_for_timeout(2000)
+                    page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # save button
+                    page.wait_for_timeout(2000)
+                    page.locator('.btn-back-tiered-menu ').click() # back button press
+                    page.wait_for_timeout(2000)
+
+                except KeyError:
+                    print(f"Certain Field Not Found : '{block_name}'")
+
+def process_files(page, sitename, instance_id, files_folder, pages_folder):
+    # Navigate to Content > Files
+    page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-settings--file-manager")
+    page.wait_for_timeout(5000)
+
+    # Step 4: Scan all JSON files in the folder
+    for file_name in os.listdir(files_folder):
+        f_name = ""
+        f_path = ""
+        f_url = ""
+        f_category = ""
+        f_only_on_deploy = ""
+        f_deploy_on = ""
+        f_weight = ""
+        f_pages = []
+        f_private = ""
+        f_footer = ""
+        f_header = ""
+        f_async = ""
+        f_modular = ""
+
+        index = 0 # needed for multiple entries in search result
+
+        if file_name.endswith(".json"):
+            file_path = os.path.join(files_folder, file_name)
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                f_name = data["details"]["filename"]
+                f_path = data["details"]["filepath"]
+                f_url = data["details"]["url"]
+                f_only_on_deploy = data["details"]["only_on_deployment"]
+                f_deploy_on = data["details"]["deploy_on"]
+                f_category = data["details"]["category"]
+                f_weight = data["details"]["weight"]
+                f_pages = data["details"]["pages"]
+                f_private = data["details"]["private"]
+                f_footer = data["details"]["footer_file"]
+                f_header = data["details"]["header_file"]
+                f_async = data["details"]["async"]
+                f_modular = data["details"]["modular"]
+
+                # Convert the Variables to String
+                f_path_str = str(f_path)
+                f_url_str = str(f_url)
+                f_only_on_deploy_str = str(f_only_on_deploy)
+                f_deploy_on_str = str(f_deploy_on)
+                f_category_str = str(f_category)
+                f_weight_str = str(f_weight)
+                f_private_str = str(f_private)
+                f_footer_str = str(f_footer)
+                f_header_str = str(f_header)
+
+                for key, value in f_pages.items():
+                    print(f"File is : '{f_name}' for JSON file '{file_name}'")
+                # pages_count = len(f_pages)
+                # print(pages_count)
+
+            # Search for file name
+            search_box = page.locator('xpath=//*[@id="file-search-text-input"]')
+            search_box.click()
+            page.keyboard.press("Control+A")
+            search_box.fill(f_name)
+            search_box.press("Enter")
+            page.wait_for_timeout(3000)
+
+            # Check if file name appears in page
+            file_visible = page.locator(f"text={f_name}")
+            file_visible_count = file_visible.count()
+
+            if file_visible_count > 1:
+                print(f"Duplicate File Name : '{f_name}' is DUPLICATE hence SKIPPING !!")
+            else:
+                if page.locator(f"text={f_name}").is_visible():
+                    rows = page.query_selector_all('table[data-v-7a2af82c] tbody tr')
+
+                    # Scan each row for the exact value from Table
+                    for i, row in enumerate(rows):
+                        first_column = row.query_selector("td:nth-child(1)")
+                        if first_column.inner_text().strip() == f_name:
+                            index = i + 1
+                    
+                    print(f"File Name '{f_name}' FOUND !!!! at Index {index}")
+                    
+                    # Click edit icon
+                    page.locator(f'xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div/div[2]/table/tbody/tr[{index}]/td[7]/div/span[1]/a/i').click()
+                    page.wait_for_timeout(2000)
+
+                    # Paste the pages data in the file config
+                    for key, value in f_pages.items():
+                        pages_count = len(f_pages)
+                        if pages_count <= 1:
+                            # attach_page = page.locator('xpath=//*[@id="attachToAll"]')
+                            if page.locator('xpath=//*[@id="attachToAll"]').is_visible():
+                                page.locator('xpath=//*[@id="attachToAll"]').click()
+                                page.wait_for_timeout(1000)
+                        else:
+                            for page_path in os.listdir(pages_folder):
+                                # print(index)
+                                if page_path.endswith(".json"):
+                                    page_file_path = os.path.join(pages_folder, page_path)
+                                    with open(page_file_path, "r", encoding="utf-8") as f:
+                                        page_data = json.load(f)
+                                        p_title = page_data['settings']['title']
+                                        p_uuid = page_data['settings']['uuid']
+                                    if key == p_uuid and page.locator('xpath=//*[@id="attachToIndividual"]').is_visible():
+                                        page.locator('xpath=//*[@id="attachToIndividual"]').click() #click on Individial Pages Radio Button
+                                        page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]').click()
+                                        add_individual_pages = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]/input')
+                                        add_individual_pages.fill(p_title)
+                                        page.keyboard.press("Enter")
+                                        page.wait_for_timeout(700)
+
+                    # Paste file details in field
+                    if f_private != False:
+                        private_field = page.locator('xpath=//*[@id="privateFile"]')
+                        private_field.click()
+                        page.wait_for_timeout(1000)
+
+                    if (f_header_str != "0" or f_footer_str != "0") and page.locator('xpath=//*[@id="fileplacementHeader"]').is_visible():
+                        if f_header_str != "0":
+                            page.locator('xpath=//*[@id="fileplacementHeader"]').click()
+                        elif f_footer_str != "0":
+                            page.locator('xpath=//*[@id="fileplacementFooter"]').click()
+                        else:
+                            page.locator('xpath=//*[@id="fileplacementNone"]').click()
+                        page.wait_for_timeout(2000)
+
+                    if f_async != False:
+                        async_field = page.locator('xpath=//*[@id="cssLoadingAsync"]') # for css file
+                        if async_field.is_visible():
+                            async_field.click()
+                        elif page.locator('xpath=//*[@id="fileloadasAsync"]').is_visible():
+                            page.locator('xpath=//*[@id="fileloadasAsync"]').click() # for js or any other files
+                            page.wait_for_timeout(2000)
+                    elif page.locator('xpath=//*[@id="fileloadasDefer"]').is_visible():
+                        page.locator('xpath=//*[@id="fileloadasDefer"]').click()
+                        page.locator('xpath=//*[@id="fileloadasDefer"]')
+                        page.wait_for_timeout(2000)
+                    else:
+                        page.wait_for_timeout(2000)
+
+                    weight_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[3]/div[2]/input')
+                    if weight_field.is_visible():
+                        weight_field.click()
+                        page.keyboard.press("Control+A")
+                        weight_field.fill(f_weight_str)
+                        page.wait_for_timeout(1000)
+                    
+                    if f_modular != False:
+                        modular_field = page.locator('xpath=//*[@id="modularFile"]')
+                        modular_field.click()
+                        page.wait_for_timeout(1000)
+
+                    path_field = page.locator("input[name='filepath']")
+                    if f_path_str and f_path_str != "None":
+                        path_field.click()
+                        page.keyboard.press("Control+A")
+                        path_field.fill(f_path_str)
+                        page.wait_for_timeout(1000)
+
+                    category_span = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[3]/div[3]/div/div[2]/span')
+                    if category_span.is_visible():
+                        span_text = category_span.inner_text().strip()
+                        # Check if f_category_str has a value (not empty and not None)
+                        if f_category_str and f_category_str.strip() and f_category_str != span_text and f_category_str.strip() != "None":
+                            category_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[3]/div[3]/div/div[2]/span')
+                            category_field.click()
+                            page.wait_for_timeout(1000)
+                            category_fill = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[3]/div[3]/div/div[2]/input')
+                            category_fill.fill(f_category_str)
+                            page.wait_for_timeout(2000)
+                            page.keyboard.press("Enter")
+                            page.wait_for_timeout(1000)
+
+                    # Step 9: Click Save button
+                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[1]/div[2]/div[2]/button').click()
+
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)
+    page = browser.new_page()
+
+    # Load environment variables from .env file
+    load_dotenv()
+
+    # Folder containing JSON files
+    files_folder = "files"
+    pages_folder = "pages"
+    blocks_folder = "modules"
+
+    username = os.getenv('USERNAME')
+    password = os.getenv('PASSWORD')
+    sitename = os.getenv('SITENAME')
+    instance_id = os.getenv('INSTANCE_ID')
+
+    # Go to dashboard
+    page.goto("https://webbuilder.pfizer/webbuilder/dashboard")
+
+    # Click the Webbuilder Login button
+    page.click('xpath=//*[@id="app"]/div[1]/div[1]/div[1]/div/div[2]/a')
+
+    # Fill in login credentials
+    page.fill('xpath=//*[@id="username"]', username)
+    page.fill('xpath=//*[@id="password"]', password)
+    page.press('xpath=//*[@id="password"]', "Enter")
+    
+    # Call the main processing functions in synchronous order
+    process_pages(page, sitename, instance_id, files_folder, pages_folder) # in-progress
+    process_blocks(page, sitename, instance_id, blocks_folder) # completed. released for trials
+    process_files(page, sitename, instance_id, files_folder, pages_folder) # completed. released for trials
+    
+    browser.close()
