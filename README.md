@@ -52,7 +52,7 @@ INSTANCE_ID=your_instance_id_here
 Make sure you have the required folders (`files/` and `pages/`) populated with valid JSON files.
 
 ```bash
-python import_data_v2.py
+python import_os_func.py
 ```
 
 This script will:
