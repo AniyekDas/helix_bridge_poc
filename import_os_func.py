@@ -2,112 +2,8 @@ import os
 import json
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
+import csv
 import time
-
-def process_pages(page, sitename, instance_id, files_folder, pages_folder):
-    page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-pages--main")
-    page.wait_for_timeout(5000)
-
-    for page_name in os.listdir(pages_folder):
-        if page_name.endswith(".json"):
-            page_path = os.path.join(blocks_folder, page_name)
-            with open(page_path, "r", encoding="utf-8") as f:
-                page_data = json.load(f)
-                try:
-                    p_css = page_data.get("storage", {}).get("data", {}).get("css", "")
-                    p_html = page_data.get("storage", {}).get("data", {}).get("html", "")
-                    p_title = page_data.get("settings", {}).get("title", "")
-                    p_description = page_data.get("settings", {}).get("category", "")
-                    p_language = page_data.get("settings", {}).get("protected", "")
-                    p_hidden = page_data.get("settings", {}).get("hidden", False)
-                    
-                    print(f"found block : {page_name}")
-
-                    # click on add page
-                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/button').click()
-                    page.wait_for_timeout(1000)
-
-                    # Fill title
-                    b_title_field = page.locator('x//*[@id="page-title"]')
-                    b_title_field.click()
-                    page.keyboard.press("Control+A")
-                    b_title_field.fill(p_title)
-                    page.wait_for_timeout(1000)
-
-                    # Fill category
-                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]').click()
-                    b_category_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[3]/div/div[2]/input')
-                    b_category_field.fill(b_category)
-                    page.keyboard.press("Enter")
-                    page.wait_for_timeout(1000)
-
-                    # If protected, perform extended logic
-                    if b_protected:
-                        # Click protected checkbox
-                        page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div/label/input').click()
-                        page.wait_for_timeout(1000)
-
-                        # Step 1: Handle b_files
-                        if isinstance(b_files, list) and b_files:
-                            for file_value in b_files:
-                                page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]').click()
-                                file_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/section/section/div/div[3]/input')
-                                file_input.fill(file_value)
-                                page.keyboard.press("Enter")
-                                page.wait_for_timeout(1000)
-
-                        # Step 2: Handle auto_attach
-                        if b_auto_attach:
-                            page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[2]/label/input').click()
-                            page.wait_for_timeout(1000)
-
-                            # Step 2a: Handle auto_attach_location
-                            if b_auto_attach_location:
-                                location_select = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[3]/select')
-                                options = location_select.locator('option').all()
-                                for option in options:
-                                    option_text = option.text_content()
-                                    if option_text.strip() == b_auto_attach_location.strip():
-                                        option.click()
-                                        page.wait_for_timeout(1000)
-                                        break
-
-                            # Step 3: Handle auto_attach_exceptions
-                            if isinstance(b_auto_attach_exceptions, list) and b_auto_attach_exceptions:
-                                exception_container = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]')
-                                page.wait_for_timeout(1000)
-                                for exception in b_auto_attach_exceptions:
-                                    exception_container.click()
-                                    exception_input = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[2]/div[4]/div/div[2]/input')
-                                    exception_input.fill(exception)
-                                    page.keyboard.press("Enter")
-                                    page.wait_for_timeout(1000)
-
-                        # Step 4: Handle auto_attach_to_error_pages
-                        if b_auto_attach_to_error_pages:
-                            page.locator('xpath=b_auto_attach_to_error_pages').click()
-                            page.wait_for_timeout(1000)
-
-                    # Proceed with block import
-                    
-                    import_btn = page.locator('.fa-download')
-                    import_btn.click()
-                    page.wait_for_timeout(3000)
-                    text_field = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[6]/div[1]/div/div/div/div[5]/div/pre')
-                    text_field.click()
-                    page.wait_for_timeout(2000)
-                    text_fill = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[1]/textarea')
-                    text_fill.fill(b_html + "\n" + "<style>\n" + b_css + "\n</style>")
-                    page.wait_for_timeout(2000)
-                    page.locator('.gjs-btn-import').click() # save code button (import)
-                    page.wait_for_timeout(2000)
-                    page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # save button
-                    page.wait_for_timeout(2000)
-                    page.locator('.btn-back-tiered-menu ').click() # back button press
-                    page.wait_for_timeout(2000)
-
-                except KeyError:
-                    print(f"Certain Field Not Found : '{block_name}'")
 
 def process_blocks(page, sitename, instance_id, blocks_folder):
     page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-settings--elements")
@@ -209,18 +105,17 @@ def process_blocks(page, sitename, instance_id, blocks_folder):
                             page.wait_for_timeout(1000)
 
                     # Proceed with block import
-                    
                     import_btn = page.locator('.fa-download')
                     import_btn.click()
-                    page.wait_for_timeout(3000)
+                    page.wait_for_timeout(1000)
                     text_field = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[6]/div[1]/div/div/div/div[5]/div/pre')
                     text_field.click()
-                    page.wait_for_timeout(2000)
+                    page.wait_for_timeout(1000)
                     text_fill = page.locator('xpath=//*[@id="gjs-mdl-c"]/div/div/div[1]/textarea')
                     text_fill.fill(b_html + "\n" + "<style>\n" + b_css + "\n</style>")
                     page.wait_for_timeout(2000)
                     page.locator('.gjs-btn-import').click() # save code button (import)
-                    page.wait_for_timeout(2000)
+                    page.wait_for_timeout(1000)
                     page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # save button
                     page.wait_for_timeout(2000)
                     page.locator('.btn-back-tiered-menu ').click() # back button press
@@ -300,6 +195,11 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
 
             if file_visible_count > 1:
                 print(f"Duplicate File Name : '{f_name}' is DUPLICATE hence SKIPPING !!")
+
+                with open(csv_filename, mode='a', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow([f_name])
+
             else:
                 if page.locator(f"text={f_name}").is_visible():
                     rows = page.query_selector_all('table[data-v-7a2af82c] tbody tr')
@@ -312,7 +212,7 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
                     
                     print(f"File Name '{f_name}' FOUND !!!! at Index {index}")
                     
-                    # Click edit icon
+                    # Click edit icon of File
                     page.locator(f'xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div/div[2]/table/tbody/tr[{index}]/td[7]/div/span[1]/a/i').click()
                     page.wait_for_timeout(2000)
 
@@ -333,42 +233,73 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
                                         page_data = json.load(f)
                                         p_title = page_data['settings']['title']
                                         p_uuid = page_data['settings']['uuid']
+
                                     if key == p_uuid and page.locator('xpath=//*[@id="attachToIndividual"]').is_visible():
                                         page.locator('xpath=//*[@id="attachToIndividual"]').click() #click on Individial Pages Radio Button
-                                        page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]').click()
-                                        add_individual_pages = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]/input')
-                                        add_individual_pages.fill(p_title)
-                                        page.keyboard.press("Enter")
-                                        page.wait_for_timeout(700)
+                                        if pages_count == 2:
+                                            # Locate all <li> elements inside the specified <ul>
+                                            li_locator = page.locator('xpath=/html/body/div[1]/div[1]/div[7]/div/div/div[2]/div/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[3]/ul/li/span')
+                                            span_texts = li_locator.all_text_contents()
 
+                                            # print("Available span texts in listbox:")
+                                            # for text in span_texts:
+                                            #     print(f"- {text}")
+
+                                            if p_title in span_texts:
+                                                page.locator('xpath=//*[@id="attachToIndividual"]').click()  # Click on Individual Pages Radio Button
+                                                page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]').click()
+                                                add_individual_pages = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]/input')
+                                                add_individual_pages.fill(p_title)
+                                                page.keyboard.press("Enter")
+                                                page.wait_for_timeout(700)
+                                            else:
+                                                page.locator('xpath=//*[@id="attachToAll"]').click()
+                                                page.wait_for_timeout(1000)
+
+                                        elif pages_count > 2:
+                                            page.locator('xpath=//*[@id="attachToIndividual"]').click()  # Click on Individual Pages Radio Button
+                                            page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]').click()
+                                            add_individual_pages = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[2]/div[3]/div/div[2]/input')
+                                            add_individual_pages.fill(p_title)
+                                            page.keyboard.press("Enter")
+                                            page.wait_for_timeout(700)
                     # Paste file details in field
                     if f_private != False:
                         private_field = page.locator('xpath=//*[@id="privateFile"]')
                         private_field.click()
                         page.wait_for_timeout(1000)
 
-                    if (f_header_str != "0" or f_footer_str != "0") and page.locator('xpath=//*[@id="fileplacementHeader"]').is_visible():
+
+                    # Only proceed if header or footer is set and the section is visible
+                    if (f_header_str != "0" or f_footer_str != "0") and page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[3]').is_visible():
+                        # Scope to the specific div containing the radio buttons
+                        placement_section = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[3]')
+                        # Determine which value to select
                         if f_header_str != "0":
-                            page.locator('xpath=//*[@id="fileplacementHeader"]').click()
+                            placement_value = "header"
                         elif f_footer_str != "0":
-                            page.locator('xpath=//*[@id="fileplacementFooter"]').click()
+                            placement_value = "footer"
                         else:
-                            page.locator('xpath=//*[@id="fileplacementNone"]').click()
-                        page.wait_for_timeout(2000)
+                            placement_value = "none"
+                        # Select the correct radio button within the scoped section
+                        placement_radio = placement_section.locator(f'input[type="radio"][value="{placement_value}"]')
+                        placement_radio.click(force=True)
+                        page.wait_for_timeout(1000)
 
                     if f_async != False:
                         async_field = page.locator('xpath=//*[@id="cssLoadingAsync"]') # for css file
                         if async_field.is_visible():
                             async_field.click()
+                            page.wait_for_timeout(1000)
                         elif page.locator('xpath=//*[@id="fileloadasAsync"]').is_visible():
                             page.locator('xpath=//*[@id="fileloadasAsync"]').click() # for js or any other files
-                            page.wait_for_timeout(2000)
+                            page.wait_for_timeout(1000)
                     elif page.locator('xpath=//*[@id="fileloadasDefer"]').is_visible():
                         page.locator('xpath=//*[@id="fileloadasDefer"]').click()
                         page.locator('xpath=//*[@id="fileloadasDefer"]')
-                        page.wait_for_timeout(2000)
+                        page.wait_for_timeout(1000)
                     else:
-                        page.wait_for_timeout(2000)
+                        page.wait_for_timeout(1000)
 
                     weight_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[3]/div[2]/input')
                     if weight_field.is_visible():
@@ -424,6 +355,16 @@ with sync_playwright() as p:
     sitename = os.getenv('SITENAME')
     instance_id = os.getenv('INSTANCE_ID')
 
+    csv_filename = f"v2_{instance_id}_duplicate_files_list.csv"
+
+    # Create the CSV file once if it doesn't exist
+    # CSV File is for noting the Duplicate Files    
+    if not os.path.exists(csv_filename):
+        with open(csv_filename, mode='w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Duplicate File Name"])  # Header row
+
+
     # Go to dashboard
     page.goto("https://webbuilder.pfizer/webbuilder/dashboard")
 
@@ -436,8 +377,7 @@ with sync_playwright() as p:
     page.press('xpath=//*[@id="password"]', "Enter")
     
     # Call the main processing functions in synchronous order
-    process_pages(page, sitename, instance_id, files_folder, pages_folder) # in-progress
-    process_blocks(page, sitename, instance_id, blocks_folder) # completed. released for trials
+    # process_blocks(page, sitename, instance_id, blocks_folder) # completed. released for trials
     process_files(page, sitename, instance_id, files_folder, pages_folder) # completed. released for trials
     
     browser.close()
