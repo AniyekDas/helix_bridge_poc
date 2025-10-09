@@ -129,6 +129,8 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
     page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-settings--file-manager")
     page.wait_for_timeout(5000)
 
+    skipped_file_csv = f"v2_{instance_id}_skipped.csv"
+
     # Step 4: Scan all JSON files in the folder
     for file_name in os.listdir(files_folder):
         f_name = ""
@@ -144,6 +146,8 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
         f_header = ""
         f_async = ""
         f_modular = ""
+
+        print(len(os.listdir(files_folder)))
 
         index = 0 # needed for multiple entries in search result
 
@@ -335,8 +339,28 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
                             page.wait_for_timeout(1000)
 
                     # Step 9: Click Save button
-                    page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[1]/div[2]/div[2]/button').click()
+                    save_button = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[1]/div[2]/div[2]/button')
+                    cancel_button = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[1]/div[2]/div[1]/button')
 
+                    if save_button.get_attribute("disabled") is not None:
+                        # Click the cancel button
+                        cancel_button.click()
+                        page.wait_for_timeout(1000)
+
+                        # Create the CSV file only once if it doesn't exist
+                        if not os.path.exists(skipped_file_csv):
+                            with open(skipped_file_csv, mode='w', newline='', encoding='utf-8') as file:
+                                writer = csv.writer(file)
+                                writer.writerow(["Skipped File Name"])
+
+                        # Append the skipped file name to the CSV
+                        with open(skipped_file_csv, mode='a', newline='', encoding='utf-8') as file:
+                            writer = csv.writer(file)
+                            writer.writerow([f_name])
+                    else:
+                        # Click the save button
+                        save_button.click()
+                        page.wait_for_timeout(1000)
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=False)
