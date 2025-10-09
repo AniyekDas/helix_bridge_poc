@@ -33,8 +33,22 @@ def process_blocks(page, sitename, instance_id, blocks_folder):
                     print(f"found block : {block_name}")
 
                     # click on add block
-                    page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a').click()
-                    page.wait_for_timeout(1000)
+                    # page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a').click()
+                    # page.wait_for_timeout(1000)
+
+
+                    primary_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a')
+                    fallback_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/a')
+
+                    if primary_button.is_visible():
+                        primary_button.click()
+                        print("Clicked primary block list button.")
+                    elif fallback_button.is_visible():
+                        fallback_button.click()
+                        print("Clicked fallback block list button.")
+                    else:
+                        print("Neither block list button was found.")
+
 
                     # Fill title
                     b_title_field = page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div/div[2]/div/div[1]/div[2]/div[1]/div[1]/input')
@@ -273,7 +287,6 @@ def process_files(page, sitename, instance_id, files_folder, pages_folder):
                         private_field.click()
                         page.wait_for_timeout(1000)
 
-
                     # Only proceed if header or footer is set and the section is visible
                     if (f_header_str != "0" or f_footer_str != "0") and page.locator('xpath=//*[@id="webbuilder-editor-content-wrapper"]/div/div[1]/div/div/div[3]/div[2]/div/div[2]/div/div/div/div/div/form/div[2]/div[2]/div[3]').is_visible():
                         # Scope to the specific div containing the radio buttons
@@ -401,7 +414,7 @@ with sync_playwright() as p:
     page.press('xpath=//*[@id="password"]', "Enter")
     
     # Call the main processing functions in synchronous order
-    # process_blocks(page, sitename, instance_id, blocks_folder) # completed. released for trials
-    process_files(page, sitename, instance_id, files_folder, pages_folder) # completed. released for trials
+    process_blocks(page, sitename, instance_id, blocks_folder) # completed. released for trials
+    # process_files(page, sitename, instance_id, files_folder, pages_folder) # completed. released for trials
     
     browser.close()
