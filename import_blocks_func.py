@@ -81,9 +81,9 @@ def create_block(page, b_title, b_description, b_category, b_protected, b_files,
     page.locator('.gjs-btn-import').click() # click import save button
     page.wait_for_timeout(1000)
     page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # click the save button
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(4000)
     page.locator('.btn-back-tiered-menu ').click() # click back button
-    page.wait_for_timeout(5000)
+    page.wait_for_timeout(10000)
 
 
 def search_and_check_block_existence(page, b_title, block_name, instance_id):
@@ -122,42 +122,65 @@ def search_and_check_block_existence(page, b_title, block_name, instance_id):
 
 def process_blocks(page, sitename, instance_id, blocks_folder):
     page.goto(f"https://{sitename}/builder/website/{instance_id}?panel=left-sidebar-settings--elements")
-    page.wait_for_timeout(5000)
+    page.wait_for_timeout(10000)
 
     for block_name in os.listdir(blocks_folder):
         if block_name.endswith(".json"):
             block_path = os.path.join(blocks_folder, block_name)
+            
+            # Skip empty JSON files
+            if os.path.getsize(block_path) == 0:
+                print(f"Skipping empty file: {block_name}")
+                continue
             with open(block_path, "r", encoding="utf-8") as f:
-                block_data = json.load(f)
+
                 try:
+                    block_data = json.load(f)
+                    if block_data == []:
+                        print(f"Skipping file with empty array: {block_name}")
+                        continue
+                except json.JSONDecodeError:
+                    print(f"Skipping file with invalid JSON: {block_name}")
+                    continue
+
+                print(f"Opening JSON : {block_name}")
+                try:
+                    # Safely extract storage and settings dictionaries
                     storage = block_data.get("storage", {})
+                    settings = block_data.get("settings", {})
+                    settings_settings = settings.get("settings", {}) if isinstance(settings.get("settings", {}), dict) else {}
+
+                    # Safely extract values from storage.data
                     if isinstance(storage, dict):
                         data = storage.get("data", {})
-                        if isinstance(data, dict) and "css" in data:
-                            b_css = data["css"]
+                        if isinstance(data, dict):
+                            b_css = data.get("css", "")
+                            b_html = data.get("html", "")
                         else:
                             b_css = ""
+                            b_html = ""
                     else:
                         b_css = ""
-                    b_html = block_data.get("storage", {}).get("data", {}).get("html", "")
-                    b_title = block_data.get("settings", {}).get("title", "")
-                    settings_settings = block_data.get("settings", {}).get("settings") or {}
-                    b_description = settings_settings.get("description", "")
-                    b_deleted_by = settings_settings.get("deleted_by", "")
-                    b_category = block_data.get("settings", {}).get("category", "")
-                    b_protected = block_data.get("settings", {}).get("protected", "")
-                    b_files = block_data.get("settings", {}).get("files", [])
-                    b_auto_attach = settings_settings.get("auto_attach", False)
-                    b_auto_attach_location = settings_settings.get("auto_attach_location", "")
-                    b_auto_attach_exceptions = settings_settings.get("auto_attach_exceptions", [])
-                    b_auto_attach_to_error_pages = settings_settings.get("auto_attach_to_error_pages", False)
+                        b_html = ""
+
+                    # Safely extract values from settings and settings.settings
+                    b_title = settings.get("title", "") if isinstance(settings, dict) else ""
+                    b_description = settings_settings.get("description", "") if isinstance(settings_settings, dict) else ""
+                    b_deleted_by = settings_settings.get("deleted_by", "") if isinstance(settings_settings, dict) else ""
+                    b_category = settings.get("category", "") if isinstance(settings, dict) else ""
+                    b_protected = settings.get("protected", "") if isinstance(settings, dict) else ""
+                    b_files = settings.get("files", []) if isinstance(settings, dict) else []
+                    b_auto_attach = settings_settings.get("auto_attach", False) if isinstance(settings_settings, dict) else False
+                    b_auto_attach_location = settings_settings.get("auto_attach_location", "") if isinstance(settings_settings, dict) else ""
+                    b_auto_attach_exceptions = settings_settings.get("auto_attach_exceptions", []) if isinstance(settings_settings, dict) else []
+                    b_auto_attach_to_error_pages = settings_settings.get("auto_attach_to_error_pages", False) if isinstance(settings_settings, dict) else False
 
                     if b_deleted_by:
                         print(f"Skipping block '{b_title}' as it was deleted by {b_deleted_by}. Exiting block processing.")
                         # break
                     # block_exists = search_and_check_block_existence(page, b_title, block_name, instance_id)
 
-                    print(f"found block : {b_title} at JSON {block_name}")
+                    # print(f"found block : {b_title} at JSON {block_name}")
 
                     add_block_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a')
                     fresh_site_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/a')
