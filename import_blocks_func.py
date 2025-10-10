@@ -83,7 +83,7 @@ def create_block(page, b_title, b_description, b_category, b_protected, b_files,
     page.locator('xpath=//*[@id="wrapper"]/nav/div[2]/div[1]/div[2]/div/div/button[1]').click() # click the save button
     page.wait_for_timeout(2000)
     page.locator('.btn-back-tiered-menu ').click() # click back button
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(5000)
 
 
 def search_and_check_block_existence(page, b_title, block_name, instance_id):
@@ -130,7 +130,15 @@ def process_blocks(page, sitename, instance_id, blocks_folder):
             with open(block_path, "r", encoding="utf-8") as f:
                 block_data = json.load(f)
                 try:
-                    b_css = block_data.get("storage", {}).get("data", {}).get("css", "")
+                    storage = block_data.get("storage", {})
+                    if isinstance(storage, dict):
+                        data = storage.get("data", {})
+                        if isinstance(data, dict) and "css" in data:
+                            b_css = data["css"]
+                        else:
+                            b_css = ""
+                    else:
+                        b_css = ""
                     b_html = block_data.get("storage", {}).get("data", {}).get("html", "")
                     b_title = block_data.get("settings", {}).get("title", "")
                     settings_settings = block_data.get("settings", {}).get("settings") or {}
@@ -146,15 +154,15 @@ def process_blocks(page, sitename, instance_id, blocks_folder):
 
                     if b_deleted_by:
                         print(f"Skipping block '{b_title}' as it was deleted by {b_deleted_by}. Exiting block processing.")
-                    
-                    block_exists = search_and_check_block_existence(page, b_title, block_name, instance_id)
+                        # break
+                    # block_exists = search_and_check_block_existence(page, b_title, block_name, instance_id)
 
-                    print(f"found block : {block_name}")
+                    print(f"found block : {b_title} at JSON {block_name}")
 
                     add_block_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/div[1]/div[2]/a')
                     fresh_site_button = page.locator('xpath=//*[@id="webbuilder-modal-block-list"]/div/div/div/a')
 
-                    if add_block_button.is_visible() and not block_exists and not b_deleted_by:
+                    if add_block_button.is_visible() and not b_deleted_by:
                         add_block_button.click()
                         print("Clicked Add block list button.")
                         page.wait_for_timeout(1000)
